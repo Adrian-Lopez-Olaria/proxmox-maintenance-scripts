@@ -1,29 +1,50 @@
-# Scripts de mantenimiento — Proxmox VE
+<div align="center">
 
-Tres scripts para automatizar el mantenimiento de cualquier nodo Proxmox. Pensados para implantarse en entornos de clientes: toda la configuración está agrupada al principio de cada archivo para que sea fácil de adaptar.
+# 🖥️ Proxmox VE — Maintenance Scripts
 
-## Estructura del repositorio
+**Scripts de mantenimiento automatizado para nodos Proxmox VE**  
+Pensados para implantarse en entornos de clientes. Toda la configuración está agrupada al inicio de cada archivo para facilitar su adaptación.
+
+![Bash](https://img.shields.io/badge/Bash-4EAA25?style=flat&logo=gnubash&logoColor=white)
+![Proxmox](https://img.shields.io/badge/Proxmox_VE-E57000?style=flat&logo=proxmox&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue?style=flat)
+
+</div>
+
+---
+
+## 📁 Estructura del repositorio
 
 ```
-scripts/
-├── pve-cleanup.sh
-├── pve-update.sh
-└── pve-report.sh
-assets/
-├── CAPTURA1.png
-├── CAPTURA2.png
-└── CAPTURA3.png
+proxmox-maintenance-scripts/
+├── scripts/
+│   ├── pve-cleanup.sh       # Limpieza del sistema
+│   ├── pve-update.sh        # Actualización segura con backup previo
+│   └── pve-report.sh        # Reporte diario por correo HTML
+├── assets/
+│   ├── CAPTURA1.png
+│   ├── CAPTURA2.png
+│   └── CAPTURA3.png
+└── README.md
 ```
 
 ---
 
-## pve-cleanup.sh — Limpieza del sistema
+## 📋 Scripts disponibles
 
-[📄 Ver script](scripts/pve-cleanup.sh)
+| Script | Descripción | Frecuencia recomendada |
+|--------|-------------|----------------------|
+| [`pve-cleanup.sh`](scripts/pve-cleanup.sh) | Limpieza de logs, backups y paquetes | Mensual |
+| [`pve-update.sh`](scripts/pve-update.sh) | Actualización segura con backup previo | Semanal |
+| [`pve-report.sh`](scripts/pve-report.sh) | Reporte de estado por correo HTML | Diario |
+
+---
+
+## 🧹 pve-cleanup.sh — Limpieza del sistema
 
 Limpia el espacio acumulado en el nodo: journal del sistema, logs generales, backups antiguos y paquetes residuales de apt. Detecta automáticamente el tipo de storage (ZFS, LVM o Directory) y actúa en consecuencia.
 
-**Qué tocar antes de usarlo:**
+**Variables a configurar:**
 ```bash
 BACKUP_DIR="/var/lib/vz/dump"   # Ruta de los backups en este cliente
 BACKUP_RETENTION_DAYS=60        # Días que se conservan los backups
@@ -36,23 +57,21 @@ DISK_WARN_PERCENT=85            # % de disco que activa la alerta en el log
 0 4 1 * * /usr/local/bin/pve-cleanup.sh
 ```
 
-Aquí se puede ver el script detectando los tres tipos de storage (ZFS, LVM y Directory), limpiando el journal, rotando logs y dejando el resumen final con el espacio liberado:
+Ejecución real mostrando la detección de storages, limpieza del journal y resumen de espacio liberado:
 
 ![Ejecución de pve-cleanup.sh](assets/CAPTURA2.png)
 
 ---
 
-## pve-update.sh — Actualización segura
+## 🔄 pve-update.sh — Actualización segura
 
-[📄 Ver script](scripts/pve-update.sh)
+Antes de tocar nada, realiza un backup completo de todas las VMs y contenedores en el storage externo configurado. Si algún backup falla, el script se detiene y no actualiza. Si todo va bien, aplica `apt upgrade` y limpia paquetes huérfanos.
 
-Antes de tocar nada, hace un backup completo de todas las VMs y contenedores en el storage externo configurado. Si algún backup falla, el script se detiene y no actualiza. Si todo va bien, aplica `apt upgrade` y limpia paquetes huérfanos.
+Si se ejecuta **manualmente** y el sistema necesita reinicio, pregunta si reiniciar ahora o más tarde. Si corre por **cron**, solo lo anota en el log.
 
-Si se ejecuta manualmente y el sistema necesita reinicio, pregunta si reiniciar ahora o más tarde. Si corre por cron, solo lo anota en el log.
-
-**Qué tocar antes de usarlo:**
+**Variables a configurar:**
 ```bash
-BACKUP_STORAGE="nombre-storage-externo"  # Nombre del storage en Proxmox (ver: pvesm status)
+BACKUP_STORAGE="nombre-storage-externo"  # Nombre del storage (ver: pvesm status)
 BACKUP_COMPRESS="zstd"                   # Compresión: zstd | lzo | gzip
 ```
 
@@ -63,21 +82,18 @@ BACKUP_COMPRESS="zstd"                   # Compresión: zstd | lzo | gzip
 
 ---
 
-## pve-report.sh — Reporte diario por correo
+## 📧 pve-report.sh — Reporte diario por correo
 
-[📄 Ver script](scripts/pve-report.sh)
+Envía cada día un correo HTML con el estado del nodo: uso de CPU, RAM y disco con barras de progreso en verde, naranja o rojo según los umbrales configurados. Incluye también el número de VMs y contenedores activos y los paquetes pendientes de actualización.
 
-Envía cada día un correo HTML con el estado del nodo: uso de CPU, RAM y disco con barras de progreso en verde, naranja o rojo según los umbrales. Incluye también el número de VMs y contenedores activos y los paquetes pendientes de actualización.
+> Requiere `msmtp` instalado: `apt-get install -y msmtp msmtp-mta`  
+> Para Gmail es necesaria una **contraseña de aplicación**: https://myaccount.google.com/apppasswords
 
-Requiere `msmtp` instalado en el nodo: `apt-get install -y msmtp msmtp-mta`
-
-Para Gmail necesitas una **contraseña de aplicación** (no la contraseña normal). Se genera en: https://myaccount.google.com/apppasswords
-
-**Qué tocar antes de usarlo:**
+**Variables a configurar:**
 ```bash
 SMTP_USER="tu-cuenta@gmail.com"
-SMTP_PASS="xxxxxxxxxxxxxxxx"      # Contraseña de aplicación de Google (16 caracteres)
-MAIL_TO="usuario@empresa.com"     # Separar varias cuentas con espacios
+SMTP_PASS="xxxx xxxx xxxx xxxx"   # Contraseña de aplicación (16 caracteres)
+MAIL_TO="usuario1@empresa.com usuario2@empresa.com"
 WARN_PERCENT=85                   # Umbral para resaltar en rojo
 ```
 
@@ -86,41 +102,48 @@ WARN_PERCENT=85                   # Umbral para resaltar en rojo
 0 11 * * * /usr/local/bin/pve-report.sh
 ```
 
-Aquí se ve la ejecución del reporte enviándose correctamente a las cuentas configuradas:
+Ejecución real con envío de correo a las cuentas configuradas:
 
 ![Ejecución de pve-report.sh](assets/CAPTURA1.png)
 
 ---
 
-## Cron configurado
+## ⏱️ Cron configurado
 
-Una vez instalados los tres scripts, el crontab queda así:
+Una vez instalados los scripts, el crontab queda así:
 
 ![Crontab configurado](assets/CAPTURA3.png)
 
 ---
 
-## Instalación rápida
+## 🚀 Instalación rápida
 
 ```bash
 # 1. Copiar los scripts al nodo
-scp scripts/pve-cleanup.sh scripts/pve-update.sh scripts/pve-report.sh root@IP-DEL-NODO:/usr/local/bin/
+scp scripts/pve-cleanup.sh scripts/pve-update.sh scripts/pve-report.sh \
+    root@IP-DEL-NODO:/usr/local/bin/
 
 # 2. Dar permisos de ejecución
 chmod +x /usr/local/bin/pve-cleanup.sh
 chmod +x /usr/local/bin/pve-update.sh
 chmod +x /usr/local/bin/pve-report.sh
 
-# 3. Instalar msmtp (necesario para pve-report.sh)
+# 3. Instalar msmtp
 apt-get install -y msmtp msmtp-mta
 
-# 4. Probar cada script manualmente antes de activar el cron
+# 4. Probar manualmente antes de activar el cron
 bash /usr/local/bin/pve-report.sh
 bash /usr/local/bin/pve-cleanup.sh
 bash /usr/local/bin/pve-update.sh
 
-# 5. Añadir el cron
+# 5. Configurar el cron
 crontab -e
 ```
 
-Los logs se guardan en `/var/log/pve-maintenance/` con fecha en el nombre.
+> Los logs se guardan en `/var/log/pve-maintenance/` con fecha en el nombre de cada archivo.
+
+---
+
+<div align="center">
+  <sub>Desarrollado por Adrián López Olaria</sub>
+</div>
